@@ -1,0 +1,1169 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>K-LIMS | KOLAS 통합 시험 관리 플랫폼</title>
+<style>
+:root {
+  --primary: #1a3a6b;
+  --primary-light: #2451a3;
+  --accent: #0ea5e9;
+  --success: #16a34a;
+  --warning: #d97706;
+  --danger: #dc2626;
+  --bg: #f0f4f8;
+  --card: #ffffff;
+  --border: #e2e8f0;
+  --text: #1e293b;
+  --text-muted: #64748b;
+  --sidebar-w: 220px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Segoe UI', 'Malgun Gothic', sans-serif; background: var(--bg); color: var(--text); display: flex; min-height: 100vh; font-size: 14px; }
+
+/* Sidebar */
+.sidebar { width: var(--sidebar-w); background: var(--primary); color: #fff; display: flex; flex-direction: column; position: fixed; top: 0; left: 0; height: 100vh; z-index: 100; }
+.sidebar-logo { padding: 20px 18px; border-bottom: 1px solid rgba(255,255,255,.12); }
+.sidebar-logo h1 { font-size: 22px; font-weight: 800; letter-spacing: 1px; color: #fff; }
+.sidebar-logo p { font-size: 10px; color: rgba(255,255,255,.6); margin-top: 2px; }
+.nav-item { display: flex; align-items: center; gap: 10px; padding: 11px 18px; cursor: pointer; border-radius: 0; color: rgba(255,255,255,.75); transition: all .2s; font-size: 13px; }
+.nav-item:hover { background: rgba(255,255,255,.1); color: #fff; }
+.nav-item.active { background: var(--accent); color: #fff; font-weight: 600; }
+.nav-item .icon { font-size: 16px; width: 20px; text-align: center; }
+.nav-section { padding: 10px 18px 4px; font-size: 10px; color: rgba(255,255,255,.4); text-transform: uppercase; letter-spacing: 1px; margin-top: 8px; }
+
+/* Main */
+.main { margin-left: var(--sidebar-w); flex: 1; display: flex; flex-direction: column; min-height: 100vh; }
+.topbar { background: var(--card); border-bottom: 1px solid var(--border); padding: 0 24px; height: 56px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 50; }
+.topbar-title { font-size: 16px; font-weight: 700; color: var(--text); }
+.topbar-right { display: flex; align-items: center; gap: 12px; }
+.badge-bell { position: relative; cursor: pointer; }
+.badge-count { position: absolute; top: -4px; right: -6px; background: var(--danger); color: #fff; font-size: 10px; border-radius: 10px; padding: 1px 5px; }
+.user-chip { background: var(--primary); color: #fff; border-radius: 20px; padding: 4px 12px; font-size: 12px; }
+.content { padding: 24px; flex: 1; }
+
+/* Page */
+.page { display: none; }
+.page.active { display: block; }
+
+/* Cards */
+.stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 24px; }
+.stat-card { background: var(--card); border-radius: 10px; padding: 20px; border: 1px solid var(--border); display: flex; align-items: center; gap: 16px; }
+.stat-icon { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 22px; }
+.stat-icon.blue { background: #dbeafe; }
+.stat-icon.green { background: #dcfce7; }
+.stat-icon.yellow { background: #fef9c3; }
+.stat-icon.red { background: #fee2e2; }
+.stat-icon.purple { background: #ede9fe; }
+.stat-icon.orange { background: #ffedd5; }
+.stat-val { font-size: 28px; font-weight: 800; color: var(--text); }
+.stat-label { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+
+/* Table */
+.card { background: var(--card); border-radius: 10px; border: 1px solid var(--border); overflow: hidden; margin-bottom: 20px; }
+.card-header { padding: 14px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+.card-title { font-size: 15px; font-weight: 700; }
+table { width: 100%; border-collapse: collapse; }
+th { background: #f8fafc; padding: 10px 14px; text-align: left; font-size: 12px; color: var(--text-muted); font-weight: 600; border-bottom: 1px solid var(--border); text-transform: uppercase; letter-spacing: .5px; }
+td { padding: 11px 14px; border-bottom: 1px solid #f1f5f9; font-size: 13px; }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: #f8fafc; }
+
+/* Status badges */
+.badge { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+.badge-접수   { background: #dbeafe; color: #1d4ed8; }
+.badge-시험중 { background: #fef9c3; color: #92400e; }
+.badge-검토중 { background: #ede9fe; color: #6d28d9; }
+.badge-완료   { background: #dcfce7; color: #15803d; }
+.badge-취소   { background: #f1f5f9; color: #64748b; }
+.badge-정상   { background: #dcfce7; color: #15803d; }
+.badge-교정중 { background: #fef9c3; color: #92400e; }
+.badge-고장   { background: #fee2e2; color: #dc2626; }
+.badge-합격   { background: #dcfce7; color: #15803d; }
+.badge-불합격 { background: #fee2e2; color: #dc2626; }
+.badge-승인   { background: #dcfce7; color: #15803d; }
+.badge-반려   { background: #fee2e2; color: #dc2626; }
+.badge-대기   { background: #fef9c3; color: #92400e; }
+
+/* Buttons */
+.btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 7px; border: none; cursor: pointer; font-size: 13px; font-weight: 600; transition: all .15s; }
+.btn-primary { background: var(--primary-light); color: #fff; }
+.btn-primary:hover { background: var(--primary); }
+.btn-success { background: var(--success); color: #fff; }
+.btn-danger  { background: var(--danger); color: #fff; }
+.btn-warning { background: var(--warning); color: #fff; }
+.btn-sm { padding: 4px 10px; font-size: 12px; }
+.btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
+.btn-outline:hover { background: var(--bg); }
+
+/* Forms */
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.form-group { display: flex; flex-direction: column; gap: 5px; }
+.form-group label { font-size: 12px; font-weight: 600; color: var(--text-muted); }
+.form-group input, .form-group select, .form-group textarea {
+  padding: 8px 12px; border: 1px solid var(--border); border-radius: 7px; font-size: 13px;
+  color: var(--text); background: #fff; font-family: inherit;
+}
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+  outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(14,165,233,.1);
+}
+.form-group.full { grid-column: 1 / -1; }
+
+/* Modal */
+.modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 200; align-items: center; justify-content: center; }
+.modal-overlay.show { display: flex; }
+.modal { background: #fff; border-radius: 14px; padding: 28px; width: 560px; max-width: 95vw; max-height: 90vh; overflow-y: auto; }
+.modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 22px; }
+.modal-title { font-size: 17px; font-weight: 800; }
+.modal-close { background: none; border: none; font-size: 20px; cursor: pointer; color: var(--text-muted); }
+.modal-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 22px; }
+
+/* Alert */
+.alert { padding: 10px 16px; border-radius: 8px; font-size: 13px; margin-bottom: 16px; }
+.alert-success { background: #dcfce7; color: #15803d; }
+.alert-danger  { background: #fee2e2; color: #dc2626; }
+.alert-warning { background: #fef9c3; color: #92400e; }
+
+/* Toolbar */
+.toolbar { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+.search-input { padding: 8px 12px; border: 1px solid var(--border); border-radius: 7px; font-size: 13px; width: 240px; }
+.search-input:focus { outline: none; border-color: var(--accent); }
+.filter-select { padding: 8px 12px; border: 1px solid var(--border); border-radius: 7px; font-size: 13px; }
+
+/* Progress steps */
+.steps { display: flex; gap: 0; margin-bottom: 20px; }
+.step { flex: 1; text-align: center; padding: 10px; border: 1px solid var(--border); background: #f8fafc; font-size: 12px; font-weight: 600; color: var(--text-muted); }
+.step:first-child { border-radius: 8px 0 0 8px; }
+.step:last-child { border-radius: 0 8px 8px 0; }
+.step.done { background: #dcfce7; color: #15803d; border-color: #86efac; }
+.step.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+/* Expiry warning */
+.expiry-soon { color: var(--warning); font-weight: 600; }
+.expiry-ok    { color: var(--success); }
+.expiry-overdue { color: var(--danger); font-weight: 600; }
+
+/* Two-column layout */
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+@media (max-width: 900px) { .two-col { grid-template-columns: 1fr; } }
+
+/* Tabs */
+.tab-bar { display: flex; gap: 0; border-bottom: 2px solid var(--border); margin-bottom: 20px; }
+.tab-btn { padding: 9px 18px; border: none; background: none; cursor: pointer; font-size: 13px; font-weight: 600; color: var(--text-muted); border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all .15s; }
+.tab-btn.active { color: var(--primary-light); border-bottom-color: var(--primary-light); }
+
+/* Loading */
+.spinner { border: 3px solid #e2e8f0; border-top-color: var(--accent); border-radius: 50%; width: 24px; height: 24px; animation: spin .7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-row td { text-align: center; padding: 30px; color: var(--text-muted); }
+
+/* Audit trail */
+.audit-entry { padding: 10px 14px; border-left: 3px solid var(--accent); background: #f8fafc; border-radius: 0 7px 7px 0; margin-bottom: 8px; }
+.audit-meta { font-size: 11px; color: var(--text-muted); margin-bottom: 4px; }
+.audit-change { font-size: 13px; }
+.audit-change .old { color: var(--danger); text-decoration: line-through; }
+.audit-change .arrow { color: var(--text-muted); margin: 0 6px; }
+.audit-change .new { color: var(--success); font-weight: 600; }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════ SIDEBAR ═══════════════════════ -->
+<nav class="sidebar">
+  <div class="sidebar-logo">
+    <h1>K-LIMS</h1>
+    <p>KOLAS 통합 시험 관리 플랫폼</p>
+  </div>
+  <div class="nav-section">메인</div>
+  <div class="nav-item active" data-page="dashboard"><span class="icon">📊</span> 대시보드</div>
+  <div class="nav-section">의뢰 / 시험</div>
+  <div class="nav-item" data-page="customers"><span class="icon">🏢</span> 고객 관리</div>
+  <div class="nav-item" data-page="orders"><span class="icon">📋</span> 의뢰 관리</div>
+  <div class="nav-item" data-page="records"><span class="icon">🔬</span> 시험 기록</div>
+  <div class="nav-section">운영 / 품질</div>
+  <div class="nav-item" data-page="equipment"><span class="icon">⚙️</span> 장비 관리</div>
+  <div class="nav-item" data-page="approvals"><span class="icon">✅</span> 결재함</div>
+  <div class="nav-item" data-page="billing"><span class="icon">💰</span> 정산 관리</div>
+  <div class="nav-item" data-page="audit"><span class="icon">🔍</span> 감사 추적</div>
+</nav>
+
+<!-- ═══════════════════════ MAIN ═══════════════════════ -->
+<div class="main">
+  <div class="topbar">
+    <span class="topbar-title" id="topbar-title">대시보드</span>
+    <div class="topbar-right">
+      <div class="badge-bell" onclick="goPage('approvals')">🔔<span class="badge-count" id="pending-count">0</span></div>
+      <div class="user-chip">👤 관리자</div>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- ══════════════ DASHBOARD ══════════════ -->
+    <div class="page active" id="page-dashboard">
+      <div class="stats-grid" id="stats-grid">
+        <div class="stat-card"><div class="stat-icon blue">📋</div><div><div class="stat-val" id="s-total">-</div><div class="stat-label">전체 의뢰</div></div></div>
+        <div class="stat-card"><div class="stat-icon yellow">⏳</div><div><div class="stat-val" id="s-progress">-</div><div class="stat-label">진행 중</div></div></div>
+        <div class="stat-card"><div class="stat-icon purple">✅</div><div><div class="stat-val" id="s-pending">-</div><div class="stat-label">미결재 건수</div></div></div>
+        <div class="stat-card"><div class="stat-icon red">⚠️</div><div><div class="stat-val" id="s-equip">-</div><div class="stat-label">교정 만료 예정</div></div></div>
+        <div class="stat-card"><div class="stat-icon green">🎉</div><div><div class="stat-val" id="s-today">-</div><div class="stat-label">오늘 완료</div></div></div>
+        <div class="stat-card"><div class="stat-icon orange">💳</div><div><div class="stat-val" id="s-unpaid">-</div><div class="stat-label">미수금 건수</div></div></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="card-title">최근 의뢰 현황</span><button class="btn btn-primary btn-sm" onclick="goPage('orders')">전체 보기</button></div>
+        <table><thead><tr><th>의뢰번호</th><th>고객사</th><th>상태</th><th>시료 수</th><th>의뢰일</th><th>완료 요청일</th></tr></thead>
+        <tbody id="dash-orders-body"><tr class="loading-row"><td colspan="6">불러오는 중...</td></tr></tbody></table>
+      </div>
+    </div>
+
+    <!-- ══════════════ CUSTOMERS ══════════════ -->
+    <div class="page" id="page-customers">
+      <div class="toolbar">
+        <input class="search-input" id="cust-search" placeholder="🔍 고객사명 검색..." oninput="loadCustomers()">
+        <button class="btn btn-primary" onclick="openModal('modal-customer')">+ 고객 등록</button>
+      </div>
+      <div class="card">
+        <table><thead><tr><th>ID</th><th>고객사명</th><th>사업자번호</th><th>담당자</th><th>연락처</th><th>이메일</th><th>동작</th></tr></thead>
+        <tbody id="customers-body"><tr class="loading-row"><td colspan="7">불러오는 중...</td></tr></tbody></table>
+      </div>
+    </div>
+
+    <!-- ══════════════ ORDERS ══════════════ -->
+    <div class="page" id="page-orders">
+      <div class="toolbar">
+        <select class="filter-select" id="order-status-filter" onchange="loadOrders()">
+          <option value="">전체 상태</option>
+          <option value="접수">접수</option>
+          <option value="시험중">시험중</option>
+          <option value="검토중">검토중</option>
+          <option value="완료">완료</option>
+          <option value="취소">취소</option>
+        </select>
+        <button class="btn btn-primary" onclick="openModal('modal-order')">+ 의뢰 등록</button>
+      </div>
+      <div class="card">
+        <table><thead><tr><th>의뢰번호</th><th>고객사</th><th>상태</th><th>의뢰일</th><th>완료 요청일</th><th>비고</th><th>동작</th></tr></thead>
+        <tbody id="orders-body"><tr class="loading-row"><td colspan="7">불러오는 중...</td></tr></tbody></table>
+      </div>
+    </div>
+
+    <!-- ══════════════ ORDER DETAIL (sub-page) ══════════════ -->
+    <div class="page" id="page-order-detail">
+      <div class="toolbar">
+        <button class="btn btn-outline" onclick="goPage('orders')">← 목록으로</button>
+        <button class="btn btn-primary" onclick="openAddItemModal()">+ 시료 추가</button>
+      </div>
+      <div id="order-detail-info"></div>
+      <div class="card">
+        <div class="card-header"><span class="card-title">시료 및 시험 항목</span></div>
+        <table><thead><tr><th>시료코드</th><th>시료명</th><th>시험규격</th><th>단가</th><th>측정값</th><th>불확도</th><th>결과</th><th>잠금</th><th>동작</th></tr></thead>
+        <tbody id="items-body"></tbody></table>
+      </div>
+    </div>
+
+    <!-- ══════════════ TEST RECORDS ══════════════ -->
+    <div class="page" id="page-records">
+      <div class="card">
+        <div class="card-header"><span class="card-title">전체 시험 기록</span></div>
+        <table><thead><tr><th>ID</th><th>시험원</th><th>장비</th><th>측정값</th><th>불확도</th><th>단위</th><th>환경조건</th><th>결과</th><th>잠금</th><th>동작</th></tr></thead>
+        <tbody id="records-body"><tr class="loading-row"><td colspan="10">불러오는 중...</td></tr></tbody></table>
+      </div>
+    </div>
+
+    <!-- ══════════════ EQUIPMENT ══════════════ -->
+    <div class="page" id="page-equipment">
+      <div class="toolbar">
+        <button class="btn btn-primary" onclick="openModal('modal-equipment')">+ 장비 등록</button>
+      </div>
+      <div class="card">
+        <table><thead><tr><th>ID</th><th>장비명</th><th>시리얼번호</th><th>제조사</th><th>위치</th><th>상태</th><th>교정 만료일</th><th>동작</th></tr></thead>
+        <tbody id="equipment-body"><tr class="loading-row"><td colspan="8">불러오는 중...</td></tr></tbody></table>
+      </div>
+    </div>
+
+    <!-- ══════════════ APPROVALS ══════════════ -->
+    <div class="page" id="page-approvals">
+      <div class="tab-bar">
+        <button class="tab-btn active" onclick="switchTab('approval-pending','approval-all',this)">미결재 <span id="pending-badge" style="background:#ef4444;color:#fff;border-radius:10px;padding:1px 7px;font-size:11px;margin-left:4px;">0</span></button>
+        <button class="tab-btn" onclick="switchTab('approval-all','approval-pending',this)">전체 결재 이력</button>
+      </div>
+      <div id="approval-pending">
+        <div id="pending-list"></div>
+        <div style="margin-top:20px;" class="card">
+          <div class="card-header"><span class="card-title">결재 처리</span></div>
+          <div style="padding:20px;" id="approval-form-area">
+            <div class="alert alert-warning">좌측 목록에서 미결재 항목을 선택하거나, 아래 폼에서 직접 결재를 진행하세요.</div>
+            <div class="form-grid">
+              <div class="form-group"><label>시험 기록 ID</label><input type="number" id="appr-record-id" placeholder="ex) 1"></div>
+              <div class="form-group"><label>결재자</label><select id="appr-staff-id"></select></div>
+              <div class="form-group"><label>결재 단계</label>
+                <select id="appr-step">
+                  <option value="계약">계약</option>
+                  <option value="검토">검토</option>
+                  <option value="승인">승인</option>
+                </select>
+              </div>
+              <div class="form-group"><label>결재 결과</label>
+                <select id="appr-action">
+                  <option value="승인">승인</option>
+                  <option value="반려">반려</option>
+                </select>
+              </div>
+              <div class="form-group full"><label>결재 의견</label><textarea id="appr-comment" rows="2" placeholder="결재 의견을 입력하세요..."></textarea></div>
+            </div>
+            <div class="modal-footer" style="justify-content:flex-start; margin-top:14px;">
+              <button class="btn btn-success" onclick="submitApproval()">결재 처리</button>
+            </div>
+            <div id="appr-msg"></div>
+          </div>
+        </div>
+      </div>
+      <div id="approval-all" style="display:none;">
+        <div class="card">
+          <table><thead><tr><th>ID</th><th>시험기록 ID</th><th>결재자</th><th>단계</th><th>결과</th><th>의견</th><th>서명해시(앞 16자)</th><th>처리일시</th></tr></thead>
+          <tbody id="approvals-body"><tr class="loading-row"><td colspan="8">불러오는 중...</td></tr></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════ BILLING ══════════════ -->
+    <div class="page" id="page-billing">
+      <div class="card">
+        <div class="card-header"><span class="card-title">정산 현황</span></div>
+        <table><thead><tr><th>ID</th><th>의뢰번호</th><th>고객사</th><th>청구금액</th><th>수납금액</th><th>결제방법</th><th>수납여부</th><th>세금계산서</th><th>동작</th></tr></thead>
+        <tbody id="billing-body"><tr class="loading-row"><td colspan="9">불러오는 중...</td></tr></tbody></table>
+      </div>
+    </div>
+
+    <!-- ══════════════ AUDIT ══════════════ -->
+    <div class="page" id="page-audit">
+      <div class="toolbar">
+        <input type="number" class="search-input" id="audit-record-id" placeholder="시험기록 ID로 필터..." style="width:200px;">
+        <button class="btn btn-outline" onclick="loadAudit()">조회</button>
+      </div>
+      <div id="audit-list"><div class="alert alert-warning">위 ID 필터를 비워두면 전체 감사 로그를 조회합니다. 조회 버튼을 눌러주세요.</div></div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /main -->
+
+<!-- ═══════ MODALS ═══════ -->
+
+<!-- Customer Modal -->
+<div class="modal-overlay" id="modal-customer">
+  <div class="modal">
+    <div class="modal-header"><span class="modal-title">고객 등록</span><button class="modal-close" onclick="closeModal('modal-customer')">✕</button></div>
+    <div class="form-grid">
+      <div class="form-group full"><label>고객사명 *</label><input id="c-name" placeholder="(주)한국전자"></div>
+      <div class="form-group"><label>사업자번호</label><input id="c-bizno" placeholder="123-45-67890"></div>
+      <div class="form-group"><label>담당자명</label><input id="c-contact" placeholder="홍길동"></div>
+      <div class="form-group"><label>연락처</label><input id="c-phone" placeholder="010-1234-5678"></div>
+      <div class="form-group"><label>이메일</label><input id="c-email" placeholder="example@corp.com"></div>
+      <div class="form-group full"><label>주소</label><input id="c-addr" placeholder="서울시 강남구..."></div>
+    </div>
+    <div id="c-msg"></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-customer')">취소</button>
+      <button class="btn btn-primary" onclick="saveCustomer()">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- Order Modal -->
+<div class="modal-overlay" id="modal-order">
+  <div class="modal">
+    <div class="modal-header"><span class="modal-title">의뢰 등록</span><button class="modal-close" onclick="closeModal('modal-order')">✕</button></div>
+    <div class="form-grid">
+      <div class="form-group full"><label>고객사 *</label><select id="o-customer" style="width:100%"></select></div>
+      <div class="form-group"><label>완료 요청일</label><input type="datetime-local" id="o-due"></div>
+      <div class="form-group full"><label>비고</label><textarea id="o-notes" rows="2" placeholder="특이사항 기입..."></textarea></div>
+    </div>
+    <div id="o-msg"></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-order')">취소</button>
+      <button class="btn btn-primary" onclick="saveOrder()">등록</button>
+    </div>
+  </div>
+</div>
+
+<!-- AddItem Modal -->
+<div class="modal-overlay" id="modal-add-item">
+  <div class="modal">
+    <div class="modal-header"><span class="modal-title">시료 추가</span><button class="modal-close" onclick="closeModal('modal-add-item')">✕</button></div>
+    <div class="form-grid">
+      <div class="form-group full"><label>시료명 *</label><input id="item-name" placeholder="PCB 기판 절연저항 시험"></div>
+      <div class="form-group"><label>시험규격</label><input id="item-std" placeholder="KS C IEC 60664-1"></div>
+      <div class="form-group"><label>단가 (원)</label><input type="number" id="item-price" placeholder="150000"></div>
+      <div class="form-group"><label>수량</label><input type="number" id="item-qty" value="1"></div>
+    </div>
+    <div id="item-msg"></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-add-item')">취소</button>
+      <button class="btn btn-primary" onclick="saveItem()">추가</button>
+    </div>
+  </div>
+</div>
+
+<!-- TestRecord Modal -->
+<div class="modal-overlay" id="modal-record">
+  <div class="modal">
+    <div class="modal-header"><span class="modal-title" id="record-modal-title">시험 기록 입력</span><button class="modal-close" onclick="closeModal('modal-record')">✕</button></div>
+    <input type="hidden" id="r-item-id">
+    <input type="hidden" id="r-record-id">
+    <div class="form-grid">
+      <div class="form-group"><label>시험원</label><select id="r-staff"></select></div>
+      <div class="form-group"><label>사용 장비</label><select id="r-equipment"></select></div>
+      <div class="form-group"><label>측정값</label><input type="number" step="any" id="r-rawdata" placeholder="1250.5"></div>
+      <div class="form-group"><label>측정불확도</label><input type="number" step="any" id="r-uncertainty" placeholder="12.5"></div>
+      <div class="form-group"><label>단위</label><input id="r-unit" placeholder="MΩ, V, A ..."></div>
+      <div class="form-group"><label>판정 결과</label>
+        <select id="r-result"><option value="">미판정</option><option value="합격">합격</option><option value="불합격">불합격</option></select>
+      </div>
+      <div class="form-group full"><label>환경조건</label><input id="r-envcond" placeholder="온도 23±2℃, 습도 50±5%RH"></div>
+      <div class="form-group full"><label>계산 노트</label><textarea id="r-calc" rows="2" placeholder="적용 계산식 및 설명..."></textarea></div>
+      <div class="form-group"><label>시작일시</label><input type="datetime-local" id="r-start"></div>
+      <div class="form-group"><label>종료일시</label><input type="datetime-local" id="r-end"></div>
+      <div class="form-group full" id="r-reason-group" style="display:none;">
+        <label>수정 사유 * (KOLAS 필수)</label>
+        <input id="r-reason" placeholder="데이터 수정 사유를 반드시 입력하세요">
+      </div>
+    </div>
+    <div id="r-msg"></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-record')">취소</button>
+      <button class="btn btn-primary" onclick="saveRecord()">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- Equipment Modal -->
+<div class="modal-overlay" id="modal-equipment">
+  <div class="modal">
+    <div class="modal-header"><span class="modal-title">장비 등록</span><button class="modal-close" onclick="closeModal('modal-equipment')">✕</button></div>
+    <div class="form-grid">
+      <div class="form-group full"><label>장비명 *</label><input id="eq-name" placeholder="디지털 멀티미터 DMM-5000"></div>
+      <div class="form-group"><label>시리얼번호</label><input id="eq-serial" placeholder="SN20240001"></div>
+      <div class="form-group"><label>제조사</label><input id="eq-mfr" placeholder="Keysight"></div>
+      <div class="form-group"><label>위치</label><input id="eq-loc" placeholder="시험실 A"></div>
+      <div class="form-group"><label>교정 만료일</label><input type="datetime-local" id="eq-cal"></div>
+      <div class="form-group"><label>상태</label>
+        <select id="eq-status"><option value="정상">정상</option><option value="교정중">교정중</option><option value="고장">고장</option></select>
+      </div>
+    </div>
+    <div id="eq-msg"></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-equipment')">취소</button>
+      <button class="btn btn-primary" onclick="saveEquipment()">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- Billing Payment Modal -->
+<div class="modal-overlay" id="modal-billing">
+  <div class="modal">
+    <div class="modal-header"><span class="modal-title">수납 처리</span><button class="modal-close" onclick="closeModal('modal-billing')">✕</button></div>
+    <input type="hidden" id="bill-id">
+    <div class="form-grid">
+      <div class="form-group"><label>수납 금액</label><input type="number" id="bill-paid" placeholder="150000"></div>
+      <div class="form-group"><label>결제 방법</label>
+        <select id="bill-method"><option value="Transfer">계좌이체</option><option value="Cash">현금</option><option value="Card">카드</option></select>
+      </div>
+      <div class="form-group"><label>수납일</label><input type="datetime-local" id="bill-date"></div>
+      <div class="form-group"><label>세금계산서 발행</label>
+        <select id="bill-tax"><option value="false">미발행</option><option value="true">발행</option></select>
+      </div>
+      <div class="form-group"><label>청구서 번호</label><input id="bill-invno" placeholder="INV-2026-001"></div>
+    </div>
+    <div id="bill-msg"></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-billing')">취소</button>
+      <button class="btn btn-success" onclick="saveBilling()">수납 처리</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = 'http://localhost:8000/api';
+
+// ── Utility ───────────────────────────────────────────────────────────────────
+async function api(path, opts = {}) {
+  const res = await fetch(API + path, {
+    headers: { 'Content-Type': 'application/json' },
+    ...opts,
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    let msg = err;
+    try { msg = JSON.parse(err).detail || err; } catch {}
+    throw new Error(msg);
+  }
+  return res.json();
+}
+
+function fmtDate(iso) {
+  if (!iso) return '-';
+  const d = new Date(iso);
+  return d.toLocaleDateString('ko-KR', { year:'numeric', month:'2-digit', day:'2-digit' }).replace(/\. /g,'-').replace('.','');
+}
+function fmtDateTime(iso) {
+  if (!iso) return '-';
+  const d = new Date(iso);
+  return d.toLocaleString('ko-KR', { year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' });
+}
+function badge(val) {
+  if (!val) return '-';
+  return `<span class="badge badge-${val}">${val}</span>`;
+}
+function expiryClass(iso) {
+  if (!iso) return '';
+  const days = (new Date(iso) - new Date()) / 864e5;
+  if (days < 0) return 'expiry-overdue';
+  if (days <= 30) return 'expiry-soon';
+  return 'expiry-ok';
+}
+function expiryText(iso) {
+  if (!iso) return '-';
+  const days = Math.ceil((new Date(iso) - new Date()) / 864e5);
+  if (days < 0) return `<span class="expiry-overdue">만료 (${Math.abs(days)}일 경과)</span>`;
+  if (days <= 30) return `<span class="expiry-soon">${fmtDate(iso)} (D-${days})</span>`;
+  return `<span class="expiry-ok">${fmtDate(iso)}</span>`;
+}
+function numFmt(n) { if (n == null) return '-'; return Number(n).toLocaleString('ko-KR'); }
+
+// ── Modal ─────────────────────────────────────────────────────────────────────
+function openModal(id) { document.getElementById(id).classList.add('show'); }
+function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+
+// ── Page routing ──────────────────────────────────────────────────────────────
+const PAGE_TITLES = {
+  dashboard: '대시보드', customers: '고객 관리', orders: '의뢰 관리',
+  records: '시험 기록', equipment: '장비 관리', approvals: '결재함',
+  billing: '정산 관리', audit: '감사 추적 (Audit Trail)',
+};
+const PAGE_LOADERS = {
+  dashboard: loadDashboard, customers: loadCustomers, orders: loadOrders,
+  records: loadRecords, equipment: loadEquipment,
+  approvals: loadApprovals, billing: loadBilling,
+};
+
+function goPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const nav = document.querySelector(`.nav-item[data-page="${name}"]`);
+  if (nav) nav.classList.add('active');
+  document.getElementById('topbar-title').textContent = PAGE_TITLES[name] || '';
+  if (PAGE_LOADERS[name]) PAGE_LOADERS[name]();
+}
+
+document.querySelectorAll('.nav-item[data-page]').forEach(el => {
+  el.addEventListener('click', () => goPage(el.dataset.page));
+});
+
+// ── Tab ───────────────────────────────────────────────────────────────────────
+function switchTab(show, hide, btn) {
+  document.getElementById(show).style.display = '';
+  document.getElementById(hide).style.display = 'none';
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+// ═══════════════════ DASHBOARD ═══════════════════════════════════════════════
+async function loadDashboard() {
+  try {
+    const [stats, recent] = await Promise.all([
+      api('/dashboard/stats'),
+      api('/dashboard/recent-orders'),
+    ]);
+    document.getElementById('s-total').textContent   = stats.total_orders;
+    document.getElementById('s-progress').textContent = stats.orders_in_progress;
+    document.getElementById('s-pending').textContent  = stats.pending_approvals;
+    document.getElementById('s-equip').textContent   = stats.expiring_equipment;
+    document.getElementById('s-today').textContent   = stats.completed_today;
+    document.getElementById('s-unpaid').textContent  = stats.unpaid_billing;
+    document.getElementById('pending-count').textContent = stats.pending_approvals;
+    document.getElementById('pending-badge').textContent = stats.pending_approvals;
+
+    const tbody = document.getElementById('dash-orders-body');
+    tbody.innerHTML = recent.length === 0
+      ? '<tr><td colspan="6" style="text-align:center;color:#64748b;padding:20px;">등록된 의뢰가 없습니다</td></tr>'
+      : recent.map(o => `<tr>
+          <td><a href="#" onclick="openOrderDetail(${o.id})" style="color:var(--primary-light);font-weight:600;">${o.order_no}</a></td>
+          <td>${o.customer_name || '-'}</td>
+          <td>${badge(o.status)}</td>
+          <td>${o.item_count}건</td>
+          <td>${fmtDate(o.order_date)}</td>
+          <td>${fmtDate(o.requested_due_date)}</td>
+        </tr>`).join('');
+  } catch(e) {
+    console.error(e);
+  }
+}
+
+// ═══════════════════ CUSTOMERS ════════════════════════════════════════════════
+async function loadCustomers() {
+  const search = document.getElementById('cust-search').value;
+  const tbody = document.getElementById('customers-body');
+  tbody.innerHTML = '<tr class="loading-row"><td colspan="7">불러오는 중...</td></tr>';
+  try {
+    const data = await api('/customers' + (search ? `?search=${encodeURIComponent(search)}` : ''));
+    tbody.innerHTML = data.length === 0
+      ? '<tr><td colspan="7" style="text-align:center;color:#64748b;padding:20px;">등록된 고객이 없습니다</td></tr>'
+      : data.map(c => `<tr>
+          <td>${c.id}</td>
+          <td><strong>${c.name}</strong></td>
+          <td>${c.business_no || '-'}</td>
+          <td>${c.contact_name || '-'}</td>
+          <td>${c.contact_phone || '-'}</td>
+          <td>${c.contact_email || '-'}</td>
+          <td>
+            <button class="btn btn-outline btn-sm" onclick="openOrdersByCustomer(${c.id},'${c.name}')">의뢰 조회</button>
+          </td>
+        </tr>`).join('');
+  } catch(e) {
+    tbody.innerHTML = `<tr><td colspan="7" style="color:red;padding:14px;">${e.message}</td></tr>`;
+  }
+}
+
+async function saveCustomer() {
+  const body = {
+    name: document.getElementById('c-name').value,
+    business_no: document.getElementById('c-bizno').value,
+    contact_name: document.getElementById('c-contact').value,
+    contact_phone: document.getElementById('c-phone').value,
+    contact_email: document.getElementById('c-email').value,
+    address: document.getElementById('c-addr').value,
+  };
+  if (!body.name) { showMsg('c-msg', '고객사명을 입력하세요.', 'danger'); return; }
+  try {
+    await api('/customers', { method:'POST', body: JSON.stringify(body) });
+    closeModal('modal-customer');
+    ['c-name','c-bizno','c-contact','c-phone','c-email','c-addr'].forEach(id => document.getElementById(id).value = '');
+    loadCustomers();
+    showMsg('c-msg','', '');
+  } catch(e) { showMsg('c-msg', e.message, 'danger'); }
+}
+
+// ═══════════════════ ORDERS ════════════════════════════════════════════════
+async function loadOrders() {
+  const status = document.getElementById('order-status-filter').value;
+  const tbody = document.getElementById('orders-body');
+  tbody.innerHTML = '<tr class="loading-row"><td colspan="7">불러오는 중...</td></tr>';
+  try {
+    const data = await api('/orders' + (status ? `?status=${encodeURIComponent(status)}` : ''));
+    tbody.innerHTML = data.length === 0
+      ? '<tr><td colspan="7" style="text-align:center;color:#64748b;padding:20px;">의뢰가 없습니다</td></tr>'
+      : data.map(o => `<tr>
+          <td><a href="#" onclick="openOrderDetail(${o.id})" style="color:var(--primary-light);font-weight:600;">${o.order_no}</a></td>
+          <td>${o.customer_name || '-'}</td>
+          <td>${badge(o.status)}</td>
+          <td>${fmtDate(o.order_date)}</td>
+          <td>${fmtDate(o.requested_due_date)}</td>
+          <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;">${o.notes || '-'}</td>
+          <td>
+            <button class="btn btn-outline btn-sm" onclick="openOrderDetail(${o.id})">상세</button>
+            ${o.status !== '완료' && o.status !== '취소' ? `<button class="btn btn-warning btn-sm" onclick="changeStatus(${o.id},'완료')">완료</button>` : ''}
+          </td>
+        </tr>`).join('');
+  } catch(e) {
+    tbody.innerHTML = `<tr><td colspan="7" style="color:red;padding:14px;">${e.message}</td></tr>`;
+  }
+  // refresh customer selector in modal
+  refreshCustomerSelect();
+}
+
+async function refreshCustomerSelect() {
+  try {
+    const cs = await api('/customers');
+    const sel = document.getElementById('o-customer');
+    sel.innerHTML = cs.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+  } catch {}
+}
+
+async function saveOrder() {
+  const body = {
+    customer_id: parseInt(document.getElementById('o-customer').value),
+    requested_due_date: document.getElementById('o-due').value || null,
+    notes: document.getElementById('o-notes').value || null,
+  };
+  try {
+    await api('/orders', { method:'POST', body: JSON.stringify(body) });
+    closeModal('modal-order');
+    document.getElementById('o-due').value = '';
+    document.getElementById('o-notes').value = '';
+    loadOrders();
+  } catch(e) { showMsg('o-msg', e.message, 'danger'); }
+}
+
+async function changeStatus(id, status) {
+  await api(`/orders/${id}`, { method:'PUT', body: JSON.stringify({ status }) });
+  loadOrders();
+}
+
+// ═══════════════════ ORDER DETAIL ═════════════════════════════════════════════
+let currentOrderId = null;
+
+async function openOrderDetail(id) {
+  currentOrderId = id;
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-order-detail').classList.add('active');
+  document.getElementById('topbar-title').textContent = '의뢰 상세';
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.querySelector('.nav-item[data-page="orders"]').classList.add('active');
+  await loadOrderDetail(id);
+}
+
+async function loadOrderDetail(id) {
+  try {
+    const o = await api(`/orders/${id}`);
+    document.getElementById('order-detail-info').innerHTML = `
+      <div class="card" style="margin-bottom:16px;">
+        <div style="padding:16px 20px;display:flex;gap:40px;flex-wrap:wrap;">
+          <div><span style="color:var(--text-muted);font-size:12px;">의뢰번호</span><div style="font-size:18px;font-weight:800;color:var(--primary-light);">${o.order_no}</div></div>
+          <div><span style="color:var(--text-muted);font-size:12px;">고객사</span><div style="font-weight:600;">${o.customer_name || '-'}</div></div>
+          <div><span style="color:var(--text-muted);font-size:12px;">상태</span><div>${badge(o.status)}</div></div>
+          <div><span style="color:var(--text-muted);font-size:12px;">의뢰일</span><div>${fmtDate(o.order_date)}</div></div>
+          <div><span style="color:var(--text-muted);font-size:12px;">완료 요청일</span><div>${fmtDate(o.requested_due_date)}</div></div>
+          ${o.notes ? `<div><span style="color:var(--text-muted);font-size:12px;">비고</span><div>${o.notes}</div></div>` : ''}
+        </div>
+      </div>`;
+
+    const tbody = document.getElementById('items-body');
+    tbody.innerHTML = o.items.length === 0
+      ? '<tr><td colspan="9" style="text-align:center;color:#64748b;padding:20px;">시료를 추가하세요</td></tr>'
+      : o.items.map(item => {
+          const r = item.test_record;
+          return `<tr>
+            <td><code style="font-size:11px;">${item.sample_id_code}</code></td>
+            <td><strong>${item.sample_name}</strong></td>
+            <td>${item.test_standard || '-'}</td>
+            <td>${numFmt(item.unit_price)}원</td>
+            <td>${r ? r.raw_data ?? '-' : '-'}</td>
+            <td>${r ? (r.uncertainty != null ? `±${r.uncertainty}` : '-') : '-'}</td>
+            <td>${r ? badge(r.result) : '-'}</td>
+            <td>${r ? (r.is_locked ? '🔒' : '🔓') : '-'}</td>
+            <td>
+              ${r
+                ? `<button class="btn btn-outline btn-sm" onclick="openRecordEdit(${item.id},${r.id})">수정</button>`
+                : `<button class="btn btn-primary btn-sm" onclick="openRecordCreate(${item.id})">기록 입력</button>`}
+            </td>
+          </tr>`;
+        }).join('');
+  } catch(e) {
+    document.getElementById('order-detail-info').innerHTML = `<div class="alert alert-danger">${e.message}</div>`;
+  }
+}
+
+function openAddItemModal() {
+  if (!currentOrderId) return;
+  document.getElementById('item-name').value = '';
+  document.getElementById('item-std').value = '';
+  document.getElementById('item-price').value = '';
+  document.getElementById('item-qty').value = '1';
+  openModal('modal-add-item');
+}
+
+async function saveItem() {
+  const body = {
+    sample_name: document.getElementById('item-name').value,
+    test_standard: document.getElementById('item-std').value,
+    unit_price: parseFloat(document.getElementById('item-price').value) || 0,
+    quantity: parseInt(document.getElementById('item-qty').value) || 1,
+  };
+  if (!body.sample_name) { showMsg('item-msg','시료명을 입력하세요.','danger'); return; }
+  try {
+    await api(`/orders/${currentOrderId}/items`, { method:'POST', body: JSON.stringify(body) });
+    closeModal('modal-add-item');
+    loadOrderDetail(currentOrderId);
+  } catch(e) { showMsg('item-msg', e.message, 'danger'); }
+}
+
+// ═══════════════════ RECORDS ════════════════════════════════════════════════
+async function loadRecords() {
+  const tbody = document.getElementById('records-body');
+  try {
+    const data = await api('/test-records');
+    tbody.innerHTML = data.length === 0
+      ? '<tr><td colspan="10" style="text-align:center;color:#64748b;padding:20px;">시험 기록이 없습니다</td></tr>'
+      : data.map(r => `<tr>
+          <td>${r.id}</td>
+          <td>${r.staff_name || '-'}</td>
+          <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;">${r.equipment_name || '-'}</td>
+          <td>${r.raw_data ?? '-'}</td>
+          <td>${r.uncertainty != null ? `±${r.uncertainty}` : '-'}</td>
+          <td>${r.unit || '-'}</td>
+          <td style="max-width:150px;font-size:11px;">${r.env_cond || '-'}</td>
+          <td>${badge(r.result)}</td>
+          <td>${r.is_locked ? '🔒 잠김' : '🔓 편집가능'}</td>
+          <td>
+            ${!r.is_locked ? `<button class="btn btn-outline btn-sm" onclick="openRecordEdit(null,${r.id})">수정</button>` : ''}
+          </td>
+        </tr>`).join('');
+  } catch(e) {
+    tbody.innerHTML = `<tr><td colspan="10" style="color:red;padding:14px;">${e.message}</td></tr>`;
+  }
+}
+
+async function openRecordCreate(itemId) {
+  document.getElementById('r-item-id').value = itemId;
+  document.getElementById('r-record-id').value = '';
+  document.getElementById('record-modal-title').textContent = '시험 기록 입력';
+  document.getElementById('r-reason-group').style.display = 'none';
+  // Clear fields
+  ['r-rawdata','r-uncertainty','r-unit','r-envcond','r-calc'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('r-result').value = '';
+  document.getElementById('r-start').value = '';
+  document.getElementById('r-end').value = '';
+  await loadStaffSelect('r-staff');
+  await loadEquipSelect('r-equipment');
+  openModal('modal-record');
+}
+
+async function openRecordEdit(itemId, recordId) {
+  document.getElementById('r-record-id').value = recordId;
+  document.getElementById('r-item-id').value = itemId || '';
+  document.getElementById('record-modal-title').textContent = '시험 기록 수정 (KOLAS Audit)';
+  document.getElementById('r-reason-group').style.display = 'block';
+  document.getElementById('r-reason').value = '';
+  try {
+    const r = await api(`/test-records/${recordId}`);
+    document.getElementById('r-rawdata').value = r.raw_data ?? '';
+    document.getElementById('r-uncertainty').value = r.uncertainty ?? '';
+    document.getElementById('r-unit').value = r.unit || '';
+    document.getElementById('r-envcond').value = r.env_cond || '';
+    document.getElementById('r-calc').value = r.calculation_note || '';
+    document.getElementById('r-result').value = r.result || '';
+    document.getElementById('r-start').value = r.start_date ? r.start_date.slice(0,16) : '';
+    document.getElementById('r-end').value = r.end_date ? r.end_date.slice(0,16) : '';
+    await loadStaffSelect('r-staff', r.staff_id);
+    await loadEquipSelect('r-equipment', r.equipment_id);
+    openModal('modal-record');
+  } catch(e) { alert('기록 조회 실패: ' + e.message); }
+}
+
+async function saveRecord() {
+  const recordId = document.getElementById('r-record-id').value;
+  const itemId   = document.getElementById('r-item-id').value;
+  const isEdit   = !!recordId;
+
+  if (isEdit) {
+    const reason = document.getElementById('r-reason').value;
+    if (!reason) { showMsg('r-msg','수정 사유를 입력해야 합니다. (KOLAS 필수)', 'danger'); return; }
+    const body = {
+      equipment_id: parseInt(document.getElementById('r-equipment').value) || null,
+      raw_data: parseFloat(document.getElementById('r-rawdata').value) || null,
+      uncertainty: parseFloat(document.getElementById('r-uncertainty').value) || null,
+      unit: document.getElementById('r-unit').value || null,
+      env_cond: document.getElementById('r-envcond').value || null,
+      calculation_note: document.getElementById('r-calc').value || null,
+      result: document.getElementById('r-result').value || null,
+      end_date: document.getElementById('r-end').value || null,
+      reason,
+    };
+    try {
+      await api(`/test-records/${recordId}`, { method:'PUT', body: JSON.stringify(body) });
+      closeModal('modal-record');
+      if (currentOrderId) loadOrderDetail(currentOrderId);
+      loadRecords();
+    } catch(e) { showMsg('r-msg', e.message, 'danger'); }
+  } else {
+    const body = {
+      order_item_id: parseInt(itemId),
+      equipment_id: parseInt(document.getElementById('r-equipment').value) || null,
+      staff_id: parseInt(document.getElementById('r-staff').value) || null,
+      raw_data: parseFloat(document.getElementById('r-rawdata').value) || null,
+      uncertainty: parseFloat(document.getElementById('r-uncertainty').value) || null,
+      unit: document.getElementById('r-unit').value || null,
+      env_cond: document.getElementById('r-envcond').value || null,
+      calculation_note: document.getElementById('r-calc').value || null,
+      result: document.getElementById('r-result').value || null,
+      start_date: document.getElementById('r-start').value || null,
+      end_date: document.getElementById('r-end').value || null,
+    };
+    try {
+      await api('/test-records', { method:'POST', body: JSON.stringify(body) });
+      closeModal('modal-record');
+      if (currentOrderId) loadOrderDetail(currentOrderId);
+      loadRecords();
+    } catch(e) { showMsg('r-msg', e.message, 'danger'); }
+  }
+}
+
+async function loadStaffSelect(selectId, selectedId) {
+  const sel = document.getElementById(selectId);
+  try {
+    const staff = await api('/staff');
+    sel.innerHTML = '<option value="">- 선택 -</option>' +
+      staff.map(s => `<option value="${s.id}" ${s.id == selectedId ? 'selected':''}>${s.name} (${s.role})</option>`).join('');
+  } catch {}
+}
+
+async function loadEquipSelect(selectId, selectedId) {
+  const sel = document.getElementById(selectId);
+  try {
+    const eqs = await api('/equipment');
+    sel.innerHTML = '<option value="">- 선택 -</option>' +
+      eqs.map(e => `<option value="${e.id}" ${e.id == selectedId ? 'selected':''}>${e.model_name}</option>`).join('');
+  } catch {}
+}
+
+// ═══════════════════ EQUIPMENT ════════════════════════════════════════════════
+async function loadEquipment() {
+  const tbody = document.getElementById('equipment-body');
+  try {
+    const data = await api('/equipment');
+    tbody.innerHTML = data.length === 0
+      ? '<tr><td colspan="8" style="text-align:center;color:#64748b;padding:20px;">장비가 없습니다</td></tr>'
+      : data.map(e => `<tr>
+          <td>${e.id}</td>
+          <td><strong>${e.model_name}</strong></td>
+          <td>${e.serial_no || '-'}</td>
+          <td>${e.manufacturer || '-'}</td>
+          <td>${e.location || '-'}</td>
+          <td>${badge(e.status)}</td>
+          <td>${expiryText(e.calibration_date)}</td>
+          <td>
+            <button class="btn btn-outline btn-sm" onclick="openEquipEdit(${e.id})">수정</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteEquip(${e.id})">삭제</button>
+          </td>
+        </tr>`).join('');
+  } catch(e) {
+    tbody.innerHTML = `<tr><td colspan="8" style="color:red;padding:14px;">${e.message}</td></tr>`;
+  }
+}
+
+async function openEquipEdit(id) {
+  try {
+    const data = await api('/equipment');
+    const e = data.find(x => x.id === id);
+    if (!e) return;
+    document.getElementById('eq-name').value   = e.model_name;
+    document.getElementById('eq-serial').value = e.serial_no || '';
+    document.getElementById('eq-mfr').value    = e.manufacturer || '';
+    document.getElementById('eq-loc').value    = e.location || '';
+    document.getElementById('eq-cal').value    = e.calibration_date ? e.calibration_date.slice(0,16) : '';
+    document.getElementById('eq-status').value = e.status || '정상';
+    document.querySelector('#modal-equipment .modal-title').textContent = '장비 수정';
+    document.querySelector('#modal-equipment .btn-primary').onclick = () => updateEquip(id);
+    openModal('modal-equipment');
+  } catch {}
+}
+
+async function saveEquipment() {
+  const body = {
+    model_name: document.getElementById('eq-name').value,
+    serial_no: document.getElementById('eq-serial').value || null,
+    manufacturer: document.getElementById('eq-mfr').value || null,
+    location: document.getElementById('eq-loc').value || null,
+    calibration_date: document.getElementById('eq-cal').value || null,
+    next_calibration_date: document.getElementById('eq-cal').value || null,
+    status: document.getElementById('eq-status').value,
+  };
+  if (!body.model_name) { showMsg('eq-msg','장비명을 입력하세요.','danger'); return; }
+  try {
+    await api('/equipment', { method:'POST', body: JSON.stringify(body) });
+    closeModal('modal-equipment');
+    resetEquipModal();
+    loadEquipment();
+  } catch(e) { showMsg('eq-msg', e.message, 'danger'); }
+}
+
+async function updateEquip(id) {
+  const body = {
+    model_name: document.getElementById('eq-name').value,
+    serial_no: document.getElementById('eq-serial').value || null,
+    manufacturer: document.getElementById('eq-mfr').value || null,
+    location: document.getElementById('eq-loc').value || null,
+    calibration_date: document.getElementById('eq-cal').value || null,
+    next_calibration_date: document.getElementById('eq-cal').value || null,
+    status: document.getElementById('eq-status').value,
+  };
+  try {
+    await api(`/equipment/${id}`, { method:'PUT', body: JSON.stringify(body) });
+    closeModal('modal-equipment');
+    resetEquipModal();
+    loadEquipment();
+  } catch(e) { showMsg('eq-msg', e.message, 'danger'); }
+}
+
+function resetEquipModal() {
+  document.querySelector('#modal-equipment .modal-title').textContent = '장비 등록';
+  document.querySelector('#modal-equipment .btn-primary').onclick = saveEquipment;
+  ['eq-name','eq-serial','eq-mfr','eq-loc','eq-cal'].forEach(id => document.getElementById(id).value='');
+  document.getElementById('eq-status').value = '정상';
+}
+
+async function deleteEquip(id) {
+  if (!confirm('이 장비를 삭제하시겠습니까?')) return;
+  await api(`/equipment/${id}`, { method:'DELETE' });
+  loadEquipment();
+}
+
+// ═══════════════════ APPROVALS ════════════════════════════════════════════════
+async function loadApprovals() {
+  await loadStaffSelect('appr-staff-id');
+  try {
+    const pending = await api('/approvals/pending');
+    document.getElementById('pending-badge').textContent = pending.length;
+    document.getElementById('pending-count').textContent = pending.length;
+
+    const pendingList = document.getElementById('pending-list');
+    pendingList.innerHTML = pending.length === 0
+      ? '<div class="alert alert-success">미결재 항목이 없습니다. ✅</div>'
+      : pending.map(p => `
+          <div style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;">
+            <div>
+              <span class="badge badge-대기">${p.step}</span>
+              <strong style="margin-left:8px;">시험기록 #${p.test_record_id}</strong>
+              <span style="color:var(--text-muted);font-size:12px;margin-left:10px;">${p.staff_name || '-'} · ${fmtDateTime(p.signed_at)}</span>
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="fillApprovalForm(${p.test_record_id},'${p.step}')">결재 처리</button>
+          </div>`).join('');
+
+    const allLogs = await api('/approvals');
+    const tbody = document.getElementById('approvals-body');
+    tbody.innerHTML = allLogs.length === 0
+      ? '<tr><td colspan="8" style="text-align:center;color:#64748b;padding:20px;">결재 이력이 없습니다</td></tr>'
+      : allLogs.map(a => `<tr>
+          <td>${a.id}</td>
+          <td>${a.test_record_id}</td>
+          <td>${a.staff_name || '-'}</td>
+          <td>${badge(a.step)}</td>
+          <td>${badge(a.action)}</td>
+          <td style="max-width:180px;">${a.comment || '-'}</td>
+          <td style="font-size:11px;font-family:monospace;">${a.signature_hash ? a.signature_hash.slice(0,16) + '...' : '-'}</td>
+          <td>${fmtDateTime(a.signed_at)}</td>
+        </tr>`).join('');
+  } catch(e) { console.error(e); }
+}
+
+function fillApprovalForm(recordId, step) {
+  document.getElementById('appr-record-id').value = recordId;
+  document.getElementById('appr-step').value = step;
+}
+
+async function submitApproval() {
+  const body = {
+    test_record_id: parseInt(document.getElementById('appr-record-id').value),
+    staff_id: parseInt(document.getElementById('appr-staff-id').value),
+    step: document.getElementById('appr-step').value,
+    action: document.getElementById('appr-action').value,
+    comment: document.getElementById('appr-comment').value || null,
+  };
+  if (!body.test_record_id || !body.staff_id) {
+    showMsg('appr-msg','시험기록 ID와 결재자를 선택하세요.','danger'); return;
+  }
+  if (body.action === '반려' && !body.comment) {
+    showMsg('appr-msg','반려 시 결재 의견을 반드시 입력하세요.','danger'); return;
+  }
+  try {
+    const res = await api('/approvals', { method:'POST', body: JSON.stringify(body) });
+    showMsg('appr-msg',`결재 완료: ${res.step} - ${res.action} (서명: ${res.signature_hash?.slice(0,16)}...)`, 'success');
+    loadApprovals();
+    loadDashboard();
+  } catch(e) { showMsg('appr-msg', e.message, 'danger'); }
+}
+
+// ═══════════════════ BILLING ════════════════════════════════════════════════
+async function loadBilling() {
+  const tbody = document.getElementById('billing-body');
+  try {
+    const data = await api('/billing');
+    tbody.innerHTML = data.length === 0
+      ? '<tr><td colspan="9" style="text-align:center;color:#64748b;padding:20px;">정산 데이터가 없습니다</td></tr>'
+      : data.map(b => `<tr>
+          <td>${b.id}</td>
+          <td><strong>${b.order_no || '-'}</strong></td>
+          <td>${b.customer_name || '-'}</td>
+          <td style="font-weight:600;">${numFmt(b.total_amount)}원</td>
+          <td>${numFmt(b.paid_amount)}원</td>
+          <td>${b.payment_method || '-'}</td>
+          <td>${b.is_paid ? '<span class="badge badge-합격">수납완료</span>' : '<span class="badge badge-반려">미수납</span>'}</td>
+          <td>${b.tax_invoice_issued ? '✅ 발행' : '❌ 미발행'}</td>
+          <td>
+            ${!b.is_paid ? `<button class="btn btn-success btn-sm" onclick="openBillingModal(${b.id}, ${b.total_amount})">수납 처리</button>` : ''}
+          </td>
+        </tr>`).join('');
+  } catch(e) {
+    tbody.innerHTML = `<tr><td colspan="9" style="color:red;padding:14px;">${e.message}</td></tr>`;
+  }
+}
+
+function openBillingModal(id, total) {
+  document.getElementById('bill-id').value = id;
+  document.getElementById('bill-paid').value = total;
+  const now = new Date();
+  now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+  document.getElementById('bill-date').value = now.toISOString().slice(0,16);
+  openModal('modal-billing');
+}
+
+async function saveBilling() {
+  const id = document.getElementById('bill-id').value;
+  const body = {
+    paid_amount: parseFloat(document.getElementById('bill-paid').value),
+    payment_method: document.getElementById('bill-method').value,
+    payment_date: document.getElementById('bill-date').value || null,
+    is_paid: true,
+    invoice_no: document.getElementById('bill-invno').value || null,
+    tax_invoice_issued: document.getElementById('bill-tax').value === 'true',
+  };
+  try {
+    await api(`/billing/${id}`, { method:'PUT', body: JSON.stringify(body) });
+    closeModal('modal-billing');
+    loadBilling();
+    loadDashboard();
+    showMsg('bill-msg','수납 처리 완료','success');
+  } catch(e) { showMsg('bill-msg', e.message, 'danger'); }
+}
+
+// ═══════════════════ AUDIT ════════════════════════════════════════════════
+async function loadAudit() {
+  const recordId = document.getElementById('audit-record-id').value;
+  const list = document.getElementById('audit-list');
+  list.innerHTML = '<div style="display:flex;justify-content:center;padding:20px;"><div class="spinner"></div></div>';
+  try {
+    const data = await api('/audit-logs' + (recordId ? `?record_id=${recordId}` : ''));
+    if (data.length === 0) {
+      list.innerHTML = '<div class="alert alert-warning">감사 로그가 없습니다.</div>';
+      return;
+    }
+    list.innerHTML = data.map(a => `
+      <div class="audit-entry">
+        <div class="audit-meta">
+          📅 ${fmtDateTime(a.changed_at)} &nbsp;|&nbsp;
+          👤 ${a.changed_by_name || '시스템'} &nbsp;|&nbsp;
+          🗂 ${a.table_name || '-'} #${a.record_id || '-'} &nbsp;|&nbsp;
+          필드: <strong>${a.field_name || '-'}</strong>
+        </div>
+        <div class="audit-change">
+          <span class="old">${a.old_value ?? 'None'}</span>
+          <span class="arrow">→</span>
+          <span class="new">${a.new_value ?? 'None'}</span>
+          &nbsp;&nbsp;<span style="color:var(--text-muted);font-size:12px;">사유: ${a.reason}</span>
+        </div>
+      </div>`).join('');
+  } catch(e) {
+    list.innerHTML = `<div class="alert alert-danger">${e.message}</div>`;
+  }
+}
+
+// ═══════════════════ Helpers ════════════════════════════════════════════════
+function showMsg(id, msg, type) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  if (!msg) { el.innerHTML = ''; return; }
+  el.innerHTML = `<div class="alert alert-${type}" style="margin-top:10px;">${msg}</div>`;
+}
+
+function openOrdersByCustomer(id, name) {
+  document.getElementById('order-status-filter').value = '';
+  goPage('orders');
+}
+
+// ═══════════════════ INIT ════════════════════════════════════════════════════
+loadDashboard();
+</script>
+</body>
+</html>
