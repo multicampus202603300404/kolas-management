@@ -1,0 +1,100 @@
+K-LIMS 플랫폼의 데이터 무결성과 KOLAS 추적성(Traceability)을 보장하기 위한 **ERD(Entity Relationship Diagram) 설계안**입니다. 
+
+KOLAS 심사 시 가장 중요하게 보는 **'누가(Who), 언제(When), 어떤 장비로(Which Equipment), 어떤 기준(Standard)에 따라'** 기록했는지를 구조화하는 데 초점을 맞췄습니다.
+
+---
+
+### 1. ERD 논리 구조 (Mermaid)
+
+```mermaid
+erDiagram
+    CUSTOMER ||--o{ TEST_ORDER : "places"
+    TEST_ORDER ||--|{ ORDER_ITEM : "contains"
+    ORDER_ITEM ||--o{ TEST_REPORT : "results_in"
+    
+    ORDER_ITEM ||--|| TEST_RECORD : "conducted_as"
+    TEST_RECORD ||--o{ AUDIT_LOG : "tracked_by"
+    TEST_RECORD ||--o{ APPROVAL_LOG : "approved_by"
+    
+    EQUIPMENT ||--o{ TEST_RECORD : "used_in"
+    STAFF ||--o{ TEST_RECORD : "performs"
+    STAFF ||--o{ APPROVAL_LOG : "signs"
+    
+    TEST_ORDER ||--o{ BILLING : "invoiced_as"
+
+    CUSTOMER {
+        int id PK
+        string name "고객사명"
+        string business_no "사업자번호"
+    }
+    TEST_ORDER {
+        int id PK
+        string order_no "의뢰번호(KOLAS-2026-001)"
+        datetime order_date
+        string status "접수/시험중/완료"
+    }
+    ORDER_ITEM {
+        int id PK
+        string sample_name "시료명"
+        string test_standard "시험규격(KS/ISO)"
+    }
+    TEST_RECORD {
+        int id PK
+        float raw_data "측정값"
+        float uncertainty "측정불확도"
+        string env_cond "온습도조건"
+        datetime start_date
+    }
+    EQUIPMENT {
+        int id PK
+        string model_name "장비명"
+        datetime calibration_date "교정만료일"
+    }
+    APPROVAL_LOG {
+        int id PK
+        string step "계약/검토/승인"
+        string action "승인/반려"
+        string comment "결재의견"
+        datetime signed_at
+    }
+    AUDIT_LOG {
+        int id PK
+        string table_name
+        string old_value
+        string new_value
+        string reason "수정사유"
+    }
+```
+
+---
+
+### 2. 상세 테이블 명세 (Data Dictionary)
+
+#### 2.1. 의뢰 및 시료 관리 (Customer & Order)
+* **CUSTOMER (고객):** 고객사 기본 정보 및 담당자 연락처.
+* **TEST_ORDER (시험 의뢰):** 전체 의뢰 건에 대한 마스터 정보.
+* **ORDER_ITEM (의뢰 항목/시료):** 하나의 의뢰 안에 여러 시료나 시험 항목이 존재할 수 있는 1:N 구조.
+
+#### 2.2. 시험 수행 및 장비 (Testing & Equipment)
+* **TEST_RECORD (시험 기록서):** **[핵심 테이블]** 시험 결과값, 계산식 적용 결과, 환경 데이터 기록.
+* **EQUIPMENT (장비):** 시험에 사용된 장비 매핑. 교정 유효기간이 지난 장비는 기록 시 `Validation` 체크에서 차단.
+* **STANDARD_SPEC (기준 DB):** 각 시험 항목별 합격/불합격 판정 기준치 및 단위 보관.
+
+#### 2.3. 전자결재 및 품질 관리 (Approval & Audit)
+* **APPROVAL_LOG (전자결재):** 결재 단계별(기안-검토-승인) 상태와 전자서명 해시값을 저장.
+* **AUDIT_LOG (감사 추적):** **[KOLAS 필수]** `TEST_RECORD`나 `ORDER_ITEM` 테이블의 데이터가 수정될 때마다 기존 값을 백업하고 수정 사유를 강제 저장.
+
+#### 2.4. 정산 (Billing)
+* **BILLING (수수료):** 항목별 수가는 `ORDER_ITEM`에서 가져오며, 총액 및 입금 여부(Cash/Card/Transfer) 관리.
+
+---
+
+### 3. 설계 핵심 포인트 (Database Policy)
+
+1.  **Soft Delete 적용:** 모든 데이터는 `is_deleted` 플래그를 사용하며, 물리적으로 삭제하지 않습니다. (추적성 확보)
+2.  **Versioning:** 성적서 개정(Revision) 시 기존 레코드를 덮어쓰지 않고 새로운 버전(`version_no`)을 생성하여 이전 기록과 연결합니다.
+3.  **Data Integrity:** `TEST_RECORD` 테이블의 결과값은 `APPROVAL_LOG`의 최종 승인 플래그가 `True`가 되는 순간 `ReadOnly` 상태로 전환되도록 Trigger 설계가 필요합니다.
+
+---
+
+**Would you like me to generate the SQL DDL(Create Table) script based on this design?**
