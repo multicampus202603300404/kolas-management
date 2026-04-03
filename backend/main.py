@@ -11,6 +11,9 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy import create_engine, func
 from sqlalchemy.orm import Session, sessionmaker
 
+import sys, os
+sys.path.insert(0, os.path.dirname(__file__))
+
 import models
 import schemas
 from models import (
@@ -19,7 +22,11 @@ from models import (
 )
 
 # ── DB setup ──────────────────────────────────────────────────────────────────
-DATABASE_URL = "sqlite:///./kolas.db"
+# Vercel 환경은 /tmp 만 쓰기 가능
+if os.environ.get("VERCEL"):
+    DATABASE_URL = "sqlite:////tmp/kolas.db"
+else:
+    DATABASE_URL = "sqlite:///./kolas.db"
 engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
